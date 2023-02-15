@@ -1,7 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/chaitin/libveinmind/go/pkg/vfs"
 	"os"
+	"strings"
 	"time"
 
 	api "github.com/chaitin/libveinmind/go"
@@ -34,7 +38,19 @@ var (
 		Use:   "container",
 		Short: "scan container escalate",
 	}
+	scantestCmd = &cmd.Command{
+		Use: "test",
+	}
 )
+
+func inSlice(slice []string, str string) bool {
+	for _, value := range slice {
+		if str == value {
+			return true
+		}
+	}
+	return false
+}
 
 func scanImage(c *cmd.Command, image api.Image) error {
 	result := utils.ImagesScanRun(image)
@@ -100,10 +116,28 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 	return nil
 }
 
+func scanTest(c *cmd.Command, container api.Container) error {
+	jsonresult := make(map[string]interface{}, 0)
+	fmt.Println(strings.TrimPrefix(container.ID(), "sha256:"))
+	filecontent, err := vfs.Open("/var/lib/docker/containers/" + strings.TrimPrefix(container.ID(), "sha256:") + "/hostconfig.json")
+	fileinfo, err := vfs.Stat("/var/lib/docker/containers/" + strings.TrimPrefix(container.ID(), "sha256:") + "/hostconfig.json")
+	content := make([]byte, fileinfo.Size())
+	filecontent.Read(content)
+	if err != nil {
+		return err
+	}
+	json.Unmarshal(content, &jsonresult)
+	fmt.Println(jsonresult["PidMode"])
+	fmt.Println(jsonresult["CapAdd"])
+	return nil
+}
+
 func init() {
 	rootCmd.AddCommand(scanCmd)
 	scanCmd.AddCommand(report.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scanImage), ReportService))
 	scanCmd.AddCommand(report.MapReportCmd(cmd.MapContainerCommand(scanContainerCmd, scanContainer), ReportService))
+	//scanCmd.AddCommand(report.MapReportCmd(cmd.MapContainerCommand(scantestCmd, scanTest), ReportService))
+	scanCmd.AddCommand(scantestCmd)
 	rootCmd.AddCommand(cmd.NewInfoCommand(pluginInfo))
 }
 
