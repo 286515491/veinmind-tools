@@ -42,7 +42,7 @@ var (
 	}
 )
 
-func scan(_ *cmd.Command, image api.Image) error {
+func scanImage(_ *cmd.Command, image api.Image) error {
 
 	result, err := malicious.Scan(image)
 	if err != nil {
@@ -74,7 +74,7 @@ func scan(_ *cmd.Command, image api.Image) error {
 					reportEvent := event.Event{
 						&event.BasicInfo{
 							ID:         image.ID(),
-							Object:     event.Object{Raw: image},
+							Object:     event.NewObject(image),
 							Time:       time.Now(),
 							Level:      event.High,
 							DetectType: event.Image,
@@ -111,7 +111,7 @@ func scan(_ *cmd.Command, image api.Image) error {
 
 func init() {
 	rootCmd.AddCommand(scanCmd)
-	scanCmd.AddCommand(report.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scan), ReportService))
+	scanCmd.AddCommand(report.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scanImage), ReportService))
 	rootCmd.AddCommand(extractCmd)
 	rootCmd.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
 		Name:        "veinmind-malicious",
